@@ -20,11 +20,11 @@ void Worker::load(const std::string& cnf_path) {
 }
 
 Minisat::lbool Worker::solve(const Cube& cube) {
+    current_cube_ = cube;
     Minisat::vec<Minisat::Lit> assumps;
     for (Minisat::Lit lit : cube.assumptions) {
         assumps.push(lit);
     }
-    clearInterrupt();
     return solver_->solveLimited(assumps);
 }
 

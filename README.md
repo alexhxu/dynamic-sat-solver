@@ -12,16 +12,24 @@ src/Master.*           scheduler (sequential path only)
 src/Metrics.*          wall time, idle time, cubes, steals
 src/main.cpp           CLI
 benches/               tiny SAT and UNSAT CNFs
+tests/                 interrupt test
 ```
 
-Two compile fixes in the vendored tree, both so AppleClang accepts it: `memUsedPeak` takes the `bool` argument the header declares, and `mkLit` is an ordinary function instead of a friend with a default argument.
+Changes to the vendored tree: `memUsedPeak` takes the `bool` argument the header declares and `mkLit` is an ordinary function instead of a friend with a default argument (both so AppleClang accepts it), and `asynch_interrupt` is atomic (see Interrupt).
 
 ## Build
 
 ```bash
 cmake -S . -B build
 cmake --build build
+ctest --test-dir build --output-on-failure
 ```
+
+## Interrupt
+
+`Worker::requestInterrupt()` can be called from any thread. The running `Worker::solve()` returns `l_Undef` at MiniSat's next safe point, with the solver back at decision level 0, and `Worker::currentCube()` still holds the unfinished cube. `solve()` does not clear a pending interrupt: call `clearInterrupt()` before handing a worker new work. `tests/test_interrupt.cpp` checks this on a pigeonhole instance.
+
+The vendored `Solver::asynch_interrupt` is a `std::atomic<bool>` so the cross-thread write is not a data race.
 
 ## Run
 

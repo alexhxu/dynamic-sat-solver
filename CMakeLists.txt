@@ -25,13 +25,22 @@ target_link_libraries(minisat PUBLIC ZLIB::ZLIB)
 target_compile_options(minisat PRIVATE -w)
 target_compile_options(minisat PUBLIC -Wno-reserved-user-defined-literal)
 
-add_executable(dssolver
-    src/main.cpp
+add_library(dss_core STATIC
     src/Cube.cpp
     src/Worker.cpp
     src/Master.cpp
     src/Metrics.cpp
 )
-target_include_directories(dssolver PRIVATE src)
-target_link_libraries(dssolver PRIVATE minisat Threads::Threads)
+target_include_directories(dss_core PUBLIC src)
+target_link_libraries(dss_core PUBLIC minisat Threads::Threads)
+target_compile_options(dss_core PRIVATE -Wall -Wextra -Wpedantic)
+
+add_executable(dssolver src/main.cpp)
+target_link_libraries(dssolver PRIVATE dss_core)
 target_compile_options(dssolver PRIVATE -Wall -Wextra -Wpedantic)
+
+enable_testing()
+add_executable(test_interrupt tests/test_interrupt.cpp)
+target_link_libraries(test_interrupt PRIVATE dss_core)
+target_compile_options(test_interrupt PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME interrupt COMMAND test_interrupt)
