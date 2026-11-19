@@ -34,7 +34,176 @@
     </ul>
 
     <h2>Schedule</h2>
-    <p>See the <a href="proposal.html#schedule">proposal schedule</a>. Updates will be posted here as the project progresses.</p>
+    <p>
+      Updated November 19. This replaces the weekly plan in the
+      <a href="proposal.html#schedule">proposal</a>. The milestone report is due
+      Monday, November 23. The final report is due Thursday, December 10, and the
+      poster session is Friday, December 11, 5:30&ndash;8:30pm.
+    </p>
+    <p>
+      As of November 19 the repo builds a sequential solver. MiniSat 2.2 is vendored
+      and compiles with AppleClang. <code>Cube::divide</code> splits a guiding path,
+      a worker solves under assumptions, and <code>requestInterrupt()</code> stops
+      that solve from another thread (covered by the pigeonhole test). The master
+      solves one cube on one worker and records wall time. Static partitioning,
+      dynamic division, both division heuristics, clause sharing, and portfolio mode
+      are parsed and then rejected. The only CNFs in the tree are the two smoke
+      instances. Static partitioning and benchmark selection, which the proposal
+      had placed in November 9&ndash;22, are the work of November 19&ndash;22.
+    </p>
+    <table>
+      <tr><th>When</th><th>Who</th><th>Task</th><th>State</th></tr>
+      <tr class="done">
+        <td class="when">Nov 9&ndash;15</td>
+        <td class="who">Alex Xu, Alma Zhong</td>
+        <td>Write the proposal: divide-and-conquer on MiniSat, static versus dynamic comparison, and the original weekly plan.</td>
+        <td>Done</td>
+      </tr>
+      <tr class="done">
+        <td class="when">Nov 16&ndash;19</td>
+        <td class="who">Alex Xu</td>
+        <td>Vendor MiniSat 2.2 (commit 37dc6c67). Fix <code>memUsedPeak</code> and <code>mkLit</code> so AppleClang builds it, and make <code>asynch_interrupt</code> a <code>std::atomic&lt;bool&gt;</code>.</td>
+        <td>Done</td>
+      </tr>
+      <tr class="done">
+        <td class="when">Nov 16&ndash;19</td>
+        <td class="who">Alex Xu</td>
+        <td>Implement <code>Cube</code> as a list of assumption literals and <code>Cube::divide</code>. <code>Worker</code> loads DIMACS, solves under a cube, and keeps that cube after an interrupt.</td>
+        <td>Done</td>
+      </tr>
+      <tr class="done">
+        <td class="when">Nov 16&ndash;19</td>
+        <td class="who">Alex Xu</td>
+        <td>Sequential <code>Master</code>: one worker, empty cube, wall time, SAT competition exit codes. CLI parses <code>--workers</code>, <code>--mode</code>, <code>--min-runtime</code>, <code>--heuristic</code>, and <code>--share-clauses</code>. Smoke SAT and UNSAT CNFs pass.</td>
+        <td>Done</td>
+      </tr>
+      <tr class="done">
+        <td class="when">Nov 16&ndash;19</td>
+        <td class="who">Alex Xu</td>
+        <td><code>requestInterrupt()</code> and <code>clearInterrupt()</code>. <code>tests/test_interrupt.cpp</code> checks that a pigeonhole solve returns <code>l_Undef</code> at decision level 0 with the cube intact.</td>
+        <td>Done</td>
+      </tr>
+      <tr class="done">
+        <td class="when">Nov 16&ndash;19</td>
+        <td class="who">Alex Xu</td>
+        <td>Publish the project page and the proposal.</td>
+        <td>Done</td>
+      </tr>
+      <tr>
+        <td class="when">Nov 19&ndash;22</td>
+        <td class="who">Alex Xu</td>
+        <td>Static partitioning in <code>Master</code>. Split the root cube on variables 0, 1, &hellip; until there is one cube per worker. One thread per worker. SAT interrupts the others and returns. UNSAT returns only after every cube is refuted. A test checks both smoke CNFs at 2 and 4 workers against the sequential exit code.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Nov 19&ndash;22</td>
+        <td class="who">Alma Zhong</td>
+        <td>Time stock MiniSat on one GHC core over a slice of the SAT Competition main track. Keep instances between about 10 seconds and 3 minutes. Deliver a list of 4 satisfiable and 4 unsatisfiable CNFs with those sequential times.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Nov 19&ndash;22</td>
+        <td class="who">Alma Zhong</td>
+        <td>Draft the milestone page from this schedule and the static-mode test results. Alex Xu reviews it Sunday, November 22.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Nov 23&ndash;26</td>
+        <td class="who">Alex Xu, Alma Zhong</td>
+        <td>Submit the milestone report by Monday, November 23, 11:59pm, on the project page and as a PDF on Gradescope. Meet the staff Wednesday, November 25. Thursday, November 26 is Thanksgiving: no implementation that day.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Nov 23&ndash;26</td>
+        <td class="who">Alex Xu</td>
+        <td>Monday and Tuesday: record per-worker wall time in static mode, and fix any static-mode failures on Alma&rsquo;s first real instances. The master still splits on variable index here; the activity heuristic is not in this step.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Nov 23&ndash;26</td>
+        <td class="who">Alma Zhong</td>
+        <td>Monday and Tuesday: run static mode at 2, 4, and 8 workers on the two fastest SAT and two fastest UNSAT instances. Post sequential time, static time, and the slowest worker&rsquo;s share of the wall time.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Nov 27&ndash;29</td>
+        <td class="who">Alex Xu, Alma Zhong</td>
+        <td>Friday, November 27: milestone progress meeting with the staff.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Nov 27&ndash;29</td>
+        <td class="who">Alex Xu</td>
+        <td>Persistent worker threads. The master sleeps on a condition variable. A worker reports SAT, UNSAT, or interrupted, then waits for another cube. <code>Metrics</code> accumulates per-worker busy time and idle time.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Nov 27&ndash;29</td>
+        <td class="who">Alma Zhong</td>
+        <td><code>pickDivisionVar(Activity)</code>. Subclass <code>Solver</code> so the protected activity array is visible. Return the highest-activity variable that is not in the cube and not assigned at decision level 0. If every activity is still zero, return the lowest unassigned variable index. A small test checks both cases.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Nov 30&ndash;Dec 2</td>
+        <td class="who">Alex Xu</td>
+        <td>Dynamic division. An idle worker steals from the active worker with the longest run time, and only if that run time is at least <code>--min-runtime</code>. Interrupt the victim, split with the activity heuristic, and hand one child to each side. If activity is not ready on Monday, split on the lowest unassigned index and switch to activity as soon as <code>pickDivisionVar</code> lands. SAT cancels every worker. UNSAT waits until no cube is outstanding.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Nov 30&ndash;Dec 2</td>
+        <td class="who">Alma Zhong</td>
+        <td>Steal count, cubes generated, and interrupt latency (time from <code>requestInterrupt()</code> to <code>solve()</code> returning <code>l_Undef</code>), mean and max. Run dynamic against static at 4 workers on four instances, with <code>--min-runtime</code> 0 and 1 second, and record idle time for each.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Dec 3&ndash;6</td>
+        <td class="who">Alex Xu</td>
+        <td>Flip-count heuristic. Count decision flips in the worker, and make <code>--heuristic flip</code> select the unassigned variable with the highest count. Compare activity and flip-count at 4 and 8 workers on two SAT and two UNSAT instances: wall time, steals, and idle time.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Dec 3&ndash;6</td>
+        <td class="who">Alma Zhong</td>
+        <td>Learned-clause sharing. A worker exports clauses of length at most 8 into a mutex-protected buffer. Peers import them at the next safe point, after a split and when the master wakes them. Compare sharing on and off on the same four instances, using wall time and conflicts.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Dec 7&ndash;9</td>
+        <td class="who">Alex Xu</td>
+        <td>Portfolio mode: each worker solves the full formula with a different <code>random_seed</code> and no cubes. The first SAT cancels the rest. UNSAT requires every worker to return UNSAT. Then a GHC script over sequential, static, dynamic-activity, dynamic-flip, dynamic-share, and portfolio, at 1, 2, 4, and 8 workers, three <code>--min-runtime</code> values for the dynamic modes, three trials. Write <code>results/*.csv</code>.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Dec 7&ndash;9</td>
+        <td class="who">Alma Zhong</td>
+        <td>Plots: speedup versus workers for each mode, idle fraction versus workers, and steals versus minimum runtime. SAT and UNSAT on separate figures. Draft the results text: where dynamic beats static, what flip-count and sharing change, and which overhead (interrupt latency, repeated propagation, or the master) limits speedup.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Dec 7&ndash;9</td>
+        <td class="who">Alma Zhong</td>
+        <td>Only if the GHC CSV is finished by Tuesday, December 8: repeat the 8-worker dynamic run at 16 and 32 cores on PSC, and add that curve to the speedup plot. Otherwise the report uses GHC only.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Dec 10&ndash;11</td>
+        <td class="who">Alex Xu</td>
+        <td>Thursday: README and comments match the flags that actually run. Post the final report with Alma. Report due 11:59pm.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Dec 10&ndash;11</td>
+        <td class="who">Alma Zhong</td>
+        <td>Thursday: poster built from the speedup and idle-time graphs and one diagram of a steal. No live demo unless the sweep is already done and a laptop run can show steals without more coding.</td>
+        <td>Planned</td>
+      </tr>
+      <tr>
+        <td class="when">Dec 10&ndash;11</td>
+        <td class="who">Alex Xu, Alma Zhong</td>
+        <td>Friday, December 11, 5:30&ndash;8:30pm: poster session. Both present.</td>
+        <td>Planned</td>
+      </tr>
+    </table>
 
     <footer>15-418/618 Parallel Computer Architecture and Programming, Fall 2026</footer>
   </main>

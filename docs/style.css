@@ -17,7 +17,7 @@ body {
 }
 
 main {
-  max-width: 820px;
+  max-width: 980px;
   margin: 0 auto;
   padding: 2.5rem 1.25rem 4rem;
 }
@@ -77,6 +77,8 @@ th, td {
   vertical-align: top;
 }
 th { background: var(--code-bg); white-space: nowrap; }
+td.who, td.when { white-space: nowrap; }
+tr.done td { background: #f3f7f3; }
 
 .milestone { font-weight: 600; color: var(--accent); }
 
