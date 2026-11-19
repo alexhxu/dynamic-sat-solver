@@ -55,4 +55,4 @@ Exit codes follow the SAT competition convention: 10 satisfiable, 20 unsatisfiab
 1. Static partitioning: split the root cube until each worker has a subspace, solve with assumptions, cancel on SAT, wait for every cube on UNSAT.
 2. Dynamic division: idle worker steals by splitting the longest-running cube at a safe `interrupt()` point, with a minimum runtime before another split.
 3. Metrics for idle time, steals, and interrupt latency.
-4. Stretch: activity then flip-count variable choice, learned-clause sharing, portfolio mode.
+4. Flip-count variable choice, learned-clause sharing, and a portfolio baseline. These are part of the planned system, compared against activity-based dynamic division and static partitioning.

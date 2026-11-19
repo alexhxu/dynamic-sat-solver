@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proposal: Dynamic Load Balancing for Parallel SAT Solving</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="proposal.html">Proposal</a>
+    <a href="https://github.com/alexhxu/dynamic-sat-solver">Code</a>
+  </nav>
+  <main>
+    <h1>Dynamic Load Balancing for Parallel SAT Solving</h1>
+    <p class="authors">Alex Xu and Alma Zhong</p>
+    <p><a href="15_418_Project_Proposal.pdf">Download the proposal as a PDF</a></p>
+
+    <h2 id="url">URL</h2>
+    <p><a href="https://alexhxu.github.io/dynamic-sat-solver/">https://alexhxu.github.io/dynamic-sat-solver/</a></p>
+
+    <h2 id="summary">Summary</h2>
+    <p>
+      We will implement the divide-and-conquer parallel SAT architecture described by
+      Le Frioux et al. [1]. We will use MiniSat as the sequential solving engine and focus on the
+      parallel systems problem of dynamically distributing irregular search subtrees across
+      multicore workers. We will compare static partitioning with dynamic work redistribution
+      and evaluate speedup, idle time, scheduling overhead, and wasted speculative work.
+    </p>
+
+    <h2 id="background">Background</h2>
+    <p>
+      A SAT solver determines whether a Boolean formula has a satisfying variable assignment.
+      Modern solvers use conflict-driven clause learning (CDCL): they choose variable
+      assignments, propagate their consequences, learn clauses from conflicts, and backtrack.
+    </p>
+    <p>
+      We will use MiniSat [2] rather than implement CDCL ourselves. This allows us to focus on
+      parallel scheduling instead of SAT-specific optimizations.
+    </p>
+    <p>A formula <i>F</i> can be divided on a variable <i>x</i> using</p>
+    <p class="math"><i>F</i> = (<i>F</i> &and; <i>x</i>) &or; (<i>F</i> &and; &not;<i>x</i>).</p>
+    <p>
+      Applying this recursively creates <em>guiding paths</em>, or <em>cubes</em>, representing
+      disjoint search subspaces. MiniSat can solve the original formula under a cube using its
+      assumptions interface. The formula is satisfiable if any cube is satisfiable and
+      unsatisfiable only after every cube has been refuted.
+    </p>
+<pre><code>                     F
+                 /       \
+              x1           &not;x1
+            /    \        /    \
+         x2      &not;x2    x3      &not;x3
+       [W0]    [W1]   [W2]    [W3]      each leaf is a cube solved by one worker</code></pre>
+    <p>
+      Different cubes can be solved independently, which is where the parallelism comes from,
+      but their running times are extremely unpredictable. Static partitioning may therefore
+      leave most workers idle while one worker processes a difficult cube. The paper addresses
+      this problem by dynamically dividing an active worker's cube whenever another worker
+      becomes idle.
+    </p>
+
+    <h3>Approach</h3>
+    <p>
+      Each worker will own a MiniSat instance and solve one guiding path at a time. A master
+      thread will track worker states and outstanding subspaces.
+    </p>
+    <p>
+      Initially, the search space will be divided until each worker has a cube. When a worker
+      proves its cube unsatisfiable, it will request another job. Following Le Frioux et al.,
+      the master will select the eligible worker that has spent the longest time on its current
+      cube. The victim will be interrupted at a safe point, and its cube <i>C</i> will be divided
+      into <i>C</i> &and; <i>x</i> and <i>C</i> &and; &not;<i>x</i>. One child will be assigned to
+      the victim and the other to the idle worker.
+    </p>
+    <p>
+      A configurable minimum runtime will prevent newly created cubes from being immediately
+      divided again. We will select the division variable with two heuristics and compare them:
+      MiniSat's variable activity, and the flip-count heuristic from Le Frioux et al. Workers
+      will also export learned clauses and import clauses learned by other workers. A portfolio
+      configuration, in which several MiniSat instances solve the full formula under different
+      random seeds, is a third parallel system we will implement and measure [4].
+    </p>
+<pre><code>master loop:
+    split root cube until every worker has one cube
+    while not done:
+        wait for an event from a worker
+        if worker reports SAT:
+            interrupt all workers; return SAT
+        if worker reports UNSAT on its cube:
+            if no cubes are outstanding: return UNSAT
+            victim = active worker with the longest time on its cube
+                     (and running for at least min_runtime)
+            interrupt victim at a safe point
+            x = division variable in victim (activity or flip count)
+            give victim   C &and; x
+            give idle one C &and; &not;x
+            share clauses learned since the last split</code></pre>
+    <p>We will compare these configurations, all built on the same MiniSat workers:</p>
+    <ol>
+      <li><strong>Static partitioning:</strong> Initial cubes are distributed once, with no
+        redistribution after workers finish.</li>
+      <li><strong>Dynamic division:</strong> Idle workers trigger division of long-running
+        active cubes, using either the activity heuristic or the flip-count heuristic.</li>
+      <li><strong>Dynamic division with clause sharing:</strong> The same scheduler, with
+        learned clauses exchanged among workers.</li>
+      <li><strong>Portfolio:</strong> Several MiniSat instances solve the original formula
+        with different seeds and no cube division.</li>
+    </ol>
+    <p>
+      Stock single-threaded MiniSat will be our external performance baseline. All parallel
+      answers will be checked against it for correctness.
+    </p>
+
+    <h2 id="challenge">The Challenge</h2>
+    <p>
+      The central challenge is scheduling an irregular workload whose task sizes cannot be
+      predicted from the structure of the search tree. Our implementation must address the
+      following parallel systems issues:
+    </p>
+    <ul>
+      <li><strong>Load balance:</strong> Search subtrees at the same depth may have
+        dramatically different solving times.</li>
+      <li><strong>Task granularity:</strong> Frequent division provides more parallelism but
+        increases interruption, synchronization, and restart overhead.</li>
+      <li><strong>Steal latency:</strong> A worker must reach a safe point before its subspace
+        can be divided, leaving the requesting worker temporarily idle.</li>
+      <li><strong>Work inflation:</strong> Separate workers may repeat propagation and
+        rediscover clauses, increasing total CPU work.</li>
+      <li><strong>Termination:</strong> A SAT result permits immediate cancellation, while an
+        UNSAT result requires every outstanding subspace to be refuted.</li>
+      <li><strong>Resource contention:</strong> Multiple solver instances may compete for shared
+        cache capacity and memory bandwidth.</li>
+    </ul>
+    <p>
+      These issues connect directly to course topics including dynamic scheduling, granularity,
+      synchronization, speculative execution, locality, and scalability.
+    </p>
+
+    <h2 id="resources">Resources</h2>
+    <p>
+      We will use MiniSat 2.2 as our sequential engine and implement the parallel scheduler in
+      C++. Our primary reference is the divide-and-conquer component from Le Frioux et al. [1].
+      Their implementation uses PaInLeSS [3] and MapleCOMSPS; we will reproduce the scheduling
+      design using the smaller MiniSat codebase.
+    </p>
+    <p>
+      We will select satisfiable and unsatisfiable instances from SAT Competition benchmark
+      collections. We will use instances requiring tens of seconds to several minutes on one
+      core so that scheduling behavior is measurable.
+    </p>
+    <p>
+      Development and initial evaluation will use the GHC multicore machines. If time and access
+      permit, we will use PSC for higher-core-count experiments.
+    </p>
+
+    <h2 id="goals">Goals and Deliverables</h2>
+    <h3>Plan to Achieve</h3>
+    <ul>
+      <li>Integrate MiniSat as the sequential worker engine.</li>
+      <li>Solve cubes using MiniSat assumptions.</li>
+      <li>Implement safe asynchronous interruption.</li>
+      <li>Implement static guiding-path partitioning.</li>
+      <li>Implement the master/worker dynamic division scheduler.</li>
+      <li>Add a configurable minimum runtime before division.</li>
+      <li>Implement SAT cancellation and correct UNSAT termination.</li>
+      <li>Validate all results against stock MiniSat.</li>
+      <li>Evaluate satisfiable and unsatisfiable benchmarks separately.</li>
+      <li>Implement the flip-count division heuristic and compare it with variable activity.</li>
+      <li>Share learned clauses among workers and measure the effect on work inflation and
+        wall-clock time.</li>
+      <li>Implement a portfolio baseline with different random seeds and compare it with
+        divide-and-conquer.</li>
+    </ul>
+    <p>
+      We will measure wall-clock speedup, parallel efficiency, worker idle time, steal count,
+      interruption latency, number of generated cubes, total CPU time, and speculative work
+      discarded after early termination. The questions we will answer are whether dynamic
+      division improves utilization and running time over static partitioning, whether
+      flip-count division and clause sharing change that result, how divide-and-conquer compares
+      with a portfolio, and which overheads limit scalability.
+    </p>
+
+    <h3>Hope to Achieve</h3>
+    <p>
+      With the planned system in place, we will run the same comparisons at higher core counts
+      on PSC, looking at multi-socket effects, memory contention, and serialization at the
+      master thread. We would also like a short poster demo that solves a small instance live
+      and shows per-worker idle time and steals.
+    </p>
+
+    <h3>If the Schedule Slips</h3>
+    <p>
+      A static solver with a restricted scheduler would be too narrow: it would not answer the
+      questions above. If we fall behind, we will shrink the benchmark set and the parameter
+      sweep. The system we deliver will still include dynamic division, the flip-count
+      heuristic, learned-clause sharing, and the portfolio comparison, evaluated on GHC.
+    </p>
+    <p>
+      Success does not require linear speedup. A successful project will demonstrate correct
+      dynamic scheduling and use measurements to explain when it helps or hurts performance.
+    </p>
+
+    <h2 id="platform">Platform Choice</h2>
+    <p>
+      Shared-memory multicore CPUs are appropriate because separate cubes require little
+      communication while solving. C++ integrates naturally with MiniSat and provides direct
+      control over persistent worker threads, atomics, condition variables, and cache-aware data
+      structures.
+    </p>
+    <p>
+      The GHC machines support development and moderate-core-count experiments. PSC would allow
+      us to examine higher core counts, multi-socket effects, memory contention, and possible
+      serialization at the master thread.
+    </p>
+
+    <h2 id="schedule">Schedule</h2>
+    <table>
+      <tr><th>Week</th><th>Plan</th></tr>
+      <tr><td>Nov. 9&ndash;15</td><td>Validate MiniSat, select benchmarks, implement guiding paths, and complete static partitioning.</td></tr>
+      <tr><td>Nov. 16&ndash;22</td><td>Add interruption support, implement the master/worker framework, and collect preliminary static-imbalance results.</td></tr>
+      <tr><td>Nov. 23&ndash;29</td><td>Complete dynamic division with the activity heuristic, SAT cancellation, UNSAT termination, and performance instrumentation.</td></tr>
+      <tr><td>Nov. 30&ndash;Dec. 6</td><td>Add the flip-count heuristic, learned-clause sharing, and the portfolio baseline. Run the benchmark suite and sweep worker counts and the minimum-runtime parameter.</td></tr>
+      <tr><td>Dec. 7&ndash;10</td><td>Finish the GHC experiments, run PSC if we have the allocation, and complete graphs, the final report, the poster, and source-code documentation.</td></tr>
+    </table>
+
+    <h2 id="references">References</h2>
+    <ol class="refs">
+      <li>L. Le Frioux, S. Baarir, J. Sopena, and F. Kordon. Modular and Efficient Divide-and-Conquer SAT Solver on Top of the Painless Framework. In <i>TACAS</i>, LNCS 11427, pp. 135&ndash;151, 2019.</li>
+      <li>N. E&eacute;n and N. S&ouml;rensson. An Extensible SAT-solver. In <i>SAT</i>, LNCS 2919, pp. 502&ndash;518, 2003.</li>
+      <li>L. Le Frioux, S. Baarir, J. Sopena, and F. Kordon. PaInLeSS: A Framework for Parallel SAT Solving. In <i>SAT</i>, LNCS 10491, pp. 233&ndash;250, 2017.</li>
+      <li>Y. Hamadi, S. Jabbour, and L. Sais. ManySAT: A Parallel SAT Solver. <i>Journal on Satisfiability, Boolean Modeling and Computation</i>, 6(4):245&ndash;262, 2009.</li>
+    </ol>
+
+    <footer><a href="index.html">Back to project home</a></footer>
+  </main>
+</body>
+</html>

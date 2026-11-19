@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dynamic Load Balancing for Parallel SAT Solving</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="proposal.html">Proposal</a>
+    <a href="https://github.com/alexhxu/dynamic-sat-solver">Code</a>
+  </nav>
+  <main>
+    <h1>Dynamic Load Balancing for Parallel SAT Solving</h1>
+    <p class="authors">Alex Xu and Alma Zhong</p>
+
+    <h2>URL</h2>
+    <p><a href="https://alexhxu.github.io/dynamic-sat-solver/">https://alexhxu.github.io/dynamic-sat-solver/</a></p>
+
+    <h2>Summary</h2>
+    <p>
+      We will implement the divide-and-conquer parallel SAT architecture described by
+      Le Frioux et al., using MiniSat as the sequential solving engine on shared-memory
+      multicore CPUs (the GHC machines, and PSC if time permits). Our focus is the parallel
+      systems problem of dynamically distributing irregular search subtrees across worker
+      threads. We will compare static partitioning with dynamic work redistribution and
+      evaluate speedup, idle time, scheduling overhead, and wasted speculative work.
+    </p>
+
+    <h2>Documents</h2>
+    <ul>
+      <li><a href="proposal.html">Project Proposal</a> (<a href="15_418_Project_Proposal.pdf">PDF</a>)</li>
+      <li>Milestone Report: coming soon</li>
+      <li>Final Report: coming soon</li>
+    </ul>
+
+    <h2>Schedule</h2>
+    <p>See the <a href="proposal.html#schedule">proposal schedule</a>. Updates will be posted here as the project progresses.</p>
+
+    <footer>15-418/618 Parallel Computer Architecture and Programming, Fall 2026</footer>
+  </main>
+</body>
+</html>
