@@ -48,11 +48,15 @@ Exit codes follow the SAT competition convention: 10 satisfiable, 20 unsatisfiab
 --share-clauses
 ```
 
-`sequential` with `--workers 1` solves the formula on one MiniSat instance. `static`, `dynamic`, `--workers` other than 1, and `--share-clauses` parse and then fail with a clear error. `Cube::divide` is implemented. Victim selection, interruption-driven splitting, clause sharing, and the flip-count heuristic are not.
+`sequential` with `--workers 1` solves the formula on one MiniSat instance. `static` splits the root cube on variables 0, 1, … until each worker has one subspace, solves those in parallel, cancels the rest when one cube is satisfiable, and returns unsatisfiable only after every cube is refuted. `dynamic`, `sequential` with `--workers` other than 1, and `--share-clauses` parse and then fail with a clear error. A static run with more workers than the formula has splits to give out fails the same way.
+
+```bash
+./build/dssolver --mode static --workers 4 benches/smoke-sat.cnf
+./build/dssolver --mode static --workers 4 benches/smoke-unsat.cnf
+```
 
 ## Next
 
-1. Static partitioning: split the root cube until each worker has a subspace, solve with assumptions, cancel on SAT, wait for every cube on UNSAT.
-2. Dynamic division: idle worker steals by splitting the longest-running cube at a safe `interrupt()` point, with a minimum runtime before another split.
-3. Metrics for idle time, steals, and interrupt latency.
-4. Flip-count variable choice, learned-clause sharing, and a portfolio baseline. These are part of the planned system, compared against activity-based dynamic division and static partitioning.
+1. Dynamic division: idle worker steals by splitting the longest-running cube at a safe `interrupt()` point, with a minimum runtime before another split.
+2. Metrics for idle time, steals, and interrupt latency.
+3. Flip-count variable choice, learned-clause sharing, and a portfolio baseline. These are part of the planned system, compared against activity-based dynamic division and static partitioning.

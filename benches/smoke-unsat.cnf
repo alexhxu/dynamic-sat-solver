@@ -1,4 +1,7 @@
 c Unsatisfiable smoke instance.
-p cnf 1 2
+c Variable 1 is forced both true and false. Variable 2 is unconstrained so
+c four workers still have a second variable to split on.
+p cnf 2 3
 1 0
 -1 0
+2 0

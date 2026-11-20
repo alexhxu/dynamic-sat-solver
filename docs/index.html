@@ -35,21 +35,23 @@
 
     <h2>Schedule</h2>
     <p>
-      Updated November 19. This replaces the weekly plan in the
+      Updated November 20. This replaces the weekly plan in the
       <a href="proposal.html#schedule">proposal</a>. The milestone report is due
       Monday, November 23. The final report is due Thursday, December 10, and the
       poster session is Friday, December 11, 5:30&ndash;8:30pm.
     </p>
     <p>
-      As of November 19 the repo builds a sequential solver. MiniSat 2.2 is vendored
-      and compiles with AppleClang. <code>Cube::divide</code> splits a guiding path,
-      a worker solves under assumptions, and <code>requestInterrupt()</code> stops
-      that solve from another thread (covered by the pigeonhole test). The master
-      solves one cube on one worker and records wall time. Static partitioning,
-      dynamic division, both division heuristics, clause sharing, and portfolio mode
-      are parsed and then rejected. The only CNFs in the tree are the two smoke
-      instances. Static partitioning and benchmark selection, which the proposal
-      had placed in November 9&ndash;22, are the work of November 19&ndash;22.
+      As of November 20 the repo builds a sequential solver and a static partitioner.
+      MiniSat 2.2 is vendored and compiles with AppleClang. <code>Cube::divide</code>
+      splits a guiding path, a worker solves under assumptions, and
+      <code>requestInterrupt()</code> stops that solve from another thread.
+      Static mode gives each worker one cube, cancels the others when a cube is
+      satisfiable, and returns unsatisfiable only after every cube is refuted.
+      <code>tests/test_static.cpp</code> checks both smoke CNFs at 2 and 4 workers
+      against the sequential result. Dynamic division, both division heuristics,
+      clause sharing, and portfolio mode are parsed and then rejected. Benchmark
+      selection, which the proposal had placed in November 9&ndash;22, is still
+      open.
     </p>
     <table>
       <tr><th>When</th><th>Who</th><th>Task</th><th>State</th></tr>
@@ -89,11 +91,11 @@
         <td>Publish the project page and the proposal.</td>
         <td>Done</td>
       </tr>
-      <tr>
+      <tr class="done">
         <td class="when">Nov 19&ndash;22</td>
         <td class="who">Alex</td>
         <td>Static partitioning in <code>Master</code>. Split the root cube on variables 0, 1, &hellip; until there is one cube per worker. One thread per worker. SAT interrupts the others and returns. UNSAT returns only after every cube is refuted. A test checks both smoke CNFs at 2 and 4 workers against the sequential exit code.</td>
-        <td>Planned</td>
+        <td>Done</td>
       </tr>
       <tr>
         <td class="when">Nov 19&ndash;22</td>

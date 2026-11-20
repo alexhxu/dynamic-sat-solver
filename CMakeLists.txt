@@ -44,3 +44,11 @@ add_executable(test_interrupt tests/test_interrupt.cpp)
 target_link_libraries(test_interrupt PRIVATE dss_core)
 target_compile_options(test_interrupt PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME interrupt COMMAND test_interrupt)
+
+add_executable(test_static tests/test_static.cpp)
+target_link_libraries(test_static PRIVATE dss_core)
+target_compile_options(test_static PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME static_partition
+    COMMAND test_static
+        ${CMAKE_SOURCE_DIR}/benches/smoke-sat.cnf
+        ${CMAKE_SOURCE_DIR}/benches/smoke-unsat.cnf)
